@@ -1,0 +1,237 @@
+﻿TypeScriptとPixi.jsを使用してフラッピーバード（という有名なゲーム）のクローンゲームを作成します。
+デビッド・グアン 2017年8月27日
+
+オンラインデモリンクとコードリポジトリ（160行のTypeScriptコードです。
+
+ゲームに背景画像と音楽がない事をお詫びします
+
+この記事は、TypescriptとPixi.jsを学び、楽しんでいる間に小さなプロジェクトを構築する中から学んだ事についてです。
+
+
+・・・
+
+実装の詳細を話す前に、TypeScriptとPixi.jsについての私の2セント（※意見）があります。
+※この意味は「自分の意見・考え」。 「たった2セント（1ドル＝100円計算でも、2円です）の価値しかないですが」
+という意味が込められていますので、皮肉として使われる場合以外は、
+「私の個人的な意見で、たいした意味も持ちませんが、○○と考えます」という意味です
+
+最初の利点は、TypeScriptが強力な型チェックを提供する事。以下のコードは例です。
+
+-------------------------------------------------------------------------------------
+const optionsInPlainJS = [{
+    // Oooops
+    local: 'EN',
+    index: 1
+}, {
+    locale: 'JP',
+    index: 2
+}, {
+    locale: 'CH',
+    index: 3
+}];
+
+type Option = {
+    locale: string;
+    index: number;
+}
+const options: Option[] = [{
+    locale: 'EN',
+    index: 1
+}, {
+    // TS will yield an error here
+    local: 'JP',
+    index: 2
+}, {
+    locale: 'CH',
+    index: 3
+},];
+-------------------------------------------------------------------------------------
+
+運が良ければ、開発段階でロケールのタイプミスを見つける事が出来ますが、
+この種のエラーが気付かれずにコードベースのマスターブランチにプッシュされる事があり、
+本番環境でのデバッグに多くの時間を浪費します。
+
+TypeScriptが提供する2番目の利点は、慣れていないjavascriptライブラリの開発に苦しむ事を軽減する事です。
+多くの場合、適切な署名を使用しているかどうかを心配し、ドキュメントの確認に多くの時間を浪費します。
+
+今、私はTypeScriptが私に言うことを信頼するこ事が出来ます：
+
+[画像]
+※コードスニペットによる入力補完、関数の引数の説明をポップアップ表示している＝利点
+
+Pixi.jsは軽量の2Dライブラリです。
+
+最初の利点は、WebGLラッパー（つまり、WebGLを使用するとGPUを直接使用してグラフィックをレンダリング出来る）であり、
+WebGLAPIに触れる事なくWebGLを使用出来る事です。
+（前回の記事WebGLとImage Filter 101で、WebGLの能力について説明しましたが、WebGLは低レベルのAPIであるため、
+WebGLを機能させるために提供する必要のある定型コードがたくさんあります）
+
+2つ目の利点は、あらゆる種類の2Dコンテンツ（画像、テキスト、形状）を「スプライト」に統合した事です。
+使いやすいAPIを使用して、これらのコンテンツに変換とインタラクティブ機能を同じように適用出来ます。
+また、コンテナを使用してさまざまなコンテンツをグループ化し、バッチ効果をすばやく使用する事も出来ます。
+
+
+■飛んでいる鳥の描画
+
+Pixi.jsの使用を開始するには、HTMLファイルに以下のインクルードスクリプトを開始します。
+（または、プロジェクト内にバンドルツールがある場合はnpm install pixi.js）
+
+-------------------------------------------------------------------------------------
+<script src='https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.5.4/pixi.min.js'></script>
+-------------------------------------------------------------------------------------
+
+シーンの作成から始めましょう。この設定の後、ステージコンテナ内で発生した変更は、renderer.render(stage)を使用してレンダリング出来ます。
+
+-------------------------------------------------------------------------------------
+const renderer = PIXI.autoDetectRenderer(512, 512);
+document.body.appendChild(renderer.view);
+const stage = new PIXI.Container();
+-------------------------------------------------------------------------------------
+
+飛んでいる鳥を作成するために、このリンクからこれらのアセットを見つけました.
+（プロジェクトにさらに多くの画像がある場合は、テクスチャアトラス=スプライトシートを使用して下さい。これはPixi.jsでも十分にサポートされています）
+
+[画像]
+※飛んでいる鳥のアニメーション画像
+
+次に、「スプライト」を作成し、インターバルタイマーでスプライトのテクスチャを更新しました。
+
+以下のコードを使用すると、鳥が飛んでいるように見えます。
+
+-------------------------------------------------------------------------------------
+const canvasWidthHeight = 512;
+const BIRD_FRAME_LIST = [
+  './images/frame-1.png',
+  './images/frame-2.png',
+  './images/frame-3.png',
+  './images/frame-4.png',
+];
+
+class Bird {
+  private sprite = new PIXI.Sprite();
+
+  private textureCounter: number = 0;
+  private updateTexture = () => {
+    this.sprite.texture = PIXI.loader.resources[BIRD_FRAME_LIST[this.textureCounter++]].texture;
+
+    if (this.textureCounter === BIRD_FRAME_LIST.length) this.textureCounter = 0;
+  }
+
+  reset() {
+    this.sprite.x = canvasWidthHeight / 6;
+    this.sprite.y = canvasWidthHeight / 2.5;
+  }
+
+  constructor(stage: PIXI.Container) {
+    stage.addChild(this.sprite);
+    this.sprite.scale.x = 0.06;
+    this.sprite.scale.y = 0.06;
+    // Set the transformation origin
+    this.sprite.anchor.set(0.5, 0.5);
+    this.sprite.anchor.set(0.5, 0.5);
+    this.reset();
+
+    setInterval(this.updateTexture, 200);
+  }
+}
+
+const renderer = PIXI.autoDetectRenderer(canvasWidthHeight, canvasWidthHeight);
+document.body.appendChild(renderer.view);
+const stage = new PIXI.Container();
+
+PIXI.loader
+  .add(BIRD_FRAME_LIST)
+  .load(setup);
+
+let bird;
+const button = document.querySelector('#start');
+function setup() {
+  bird = new Bird(stage);
+  requestAnimationFrame(draw);
+}
+
+function draw() {
+  renderer.render(stage);
+  requestAnimationFrame(draw);
+}
+-------------------------------------------------------------------------------------
+
+reset()では、xとyを使用して位置を制御します。
+speedXとspeedYがある場合は、this.sptire.rotation = Math.atan（speedY / speedX）で鳥の飛行方向を更新する事も出来ます。
+
+これで鳥が出来ました。鳥にさまざまな変換を適用出来ます。
+新しいフィールドspeedYをBirdクラスに追加し、そのフィールドに基づいて毎フレームdraw()のスプライトのyを更新する事により、鳥の位置を更新してみる事が出来ます。
+
+
+■チューブ（管）の描画
+
+前述したように、Pixi.jsを使用すると、あらゆる種類の2Dコンテンツ（画像、テキスト、形状）を「スプライト」として扱う事が出来ます。
+チューブの場合は、単にいくつかの長方形を描画します。
+
+Pixi.jsは、たとえば「チューブ」を描画して水平方向に移動するために、PIXI.Graphicsで2D描画APIを提供しました。
+
+-------------------------------------------------------------------------------------
+const tube = new PIXI.Graphics();
+tube.beginFill(0xffffff);
+//drawRect(x, y, width, height)
+tube.drawRect(100, 0, 50, 120);
+tube.drawRect(100, 200, 50, 512);
+tube.endFill();
+tube.x = 200;
+stage.addChild(tube);
+renderer.render(stage);
+-------------------------------------------------------------------------------------
+
+そして、私が作ったチューブクラスは次のようなものです。
+
+-------------------------------------------------------------------------------------
+class Tube {
+  private x: number;
+  private y: number;
+  private innerDistance = 80;
+  private tubeWidth = 20;
+
+  private sprite = new PIXI.Graphics();
+
+  reset(x: number = canvasWidthHeight + 20) {
+    this.x = x;
+
+    const tubeMinHeight = 60;
+    const randomNum = Math.random() * (canvasWidthHeight - 2 * tubeMinHeight - this.innerDistance);
+    this.y = tubeMinHeight + randomNum;
+  }
+
+  update() {
+    this.x -= GAME_SPEED_X / 60;
+    if (this.x < -this.tubeWidth) this.reset();
+
+    this.sprite.clear();
+    this.sprite.beginFill(0xffffff, 1);
+    const { x, y, tubeWidth, innerDistance } = this;
+    this.sprite.drawRect(x, 0, tubeWidth, y);
+    this.sprite.drawRect(x, y + innerDistance, tubeWidth, canvasWidthHeight);
+    this.sprite.endFill();
+  }
+
+  constructor(stage: PIXI.Container, x: number) {
+    stage.addChild(this.sprite);
+    this.reset(x);
+  }
+}
+-------------------------------------------------------------------------------------
+
+
+■衝突の確認
+
+動くオブジェクト（チューブと鳥）を作成したら、それらを長方形として扱う事が出来ます。
+左上の点、幅、高さ（x1、y1、w1、h1とx2、y2、w2、h2）がある場合、2つの長方形が互いにぶつかっているかどうかを確認出来ます。
+
+-------------------------------------------------------------------------------------
+if((x1 + w1 < x2) || (x2 + w2 < x1) || (y1 + h1 < y2) || (y2 + h2 < y1))
+  No collision
+-------------------------------------------------------------------------------------
+
+つまり、これは基本的に、単純なフラッピーバードクローンを作成するための全ての部分です。
+
+読んでくれてありがとう:)
+
