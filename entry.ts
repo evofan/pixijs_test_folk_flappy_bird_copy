@@ -1,40 +1,48 @@
-const canvasWidthHeight = Math.min(Math.min(window.innerHeight, window.innerWidth), 512);
+const canvasWidthHeight = Math.min(
+  Math.min(window.innerHeight, window.innerWidth),
+  512
+);
 const GRAVITY = 9.8;
 const GAME_SPEED_X = 40;
 const BIRD_FRAME_LIST = [
-  './images/frame-1.png',
-  './images/frame-2.png',
-  './images/frame-3.png',
-  './images/frame-4.png',
+  "./images/frame-1.png",
+  "./images/frame-2.png",
+  "./images/frame-3.png",
+  "./images/frame-4.png",
 ];
 const TUBE_POS_LIST: number[] = [
   canvasWidthHeight + 50,
   canvasWidthHeight + 250,
-  canvasWidthHeight + 480
+  canvasWidthHeight + 480,
 ];
 
+/**
+ *
+ */
 class Bird {
   private speedY: number = 0;
-  private sprite = new PIXI.Sprite();
-  private isDied: boolean;
+  private sprite: PIXI.Sprite = new PIXI.Sprite();
+  private isDied: boolean = false;
 
   private textureCounter: number = 0;
   private updateTexture = () => {
     if (this.isDied) return;
-    this.sprite.texture = PIXI.loader.resources[BIRD_FRAME_LIST[this.textureCounter++]].texture;
+    this.sprite.texture =
+      PIXI.loader.resources[BIRD_FRAME_LIST[this.textureCounter++]].texture;
 
     if (this.textureCounter === BIRD_FRAME_LIST.length) this.textureCounter = 0;
-  }
+  };
 
   updateSprite = () => {
     this.speedY += GRAVITY / 70;
     this.sprite.y += this.speedY;
     this.sprite.rotation = Math.atan(this.speedY / GAME_SPEED_X);
 
-    let isCollide = false;
+    let isCollide: boolean = false;
     const { x, y, width, height } = this.sprite;
-    this.tubeList.forEach(d => {
-      if (d.checkCollision(x - width / 2, y - height / 2, width, height)) isCollide = true;
+    this.tubeList.forEach((d) => {
+      if (d.checkCollision(x - width / 2, y - height / 2, width, height))
+        isCollide = true;
     });
     if (y < -height / 2 || y > canvasWidthHeight + height / 2) isCollide = true;
 
@@ -42,7 +50,7 @@ class Bird {
       this.onCollision();
       this.isDied = true;
     }
-  }
+  };
 
   addSpeed(speedInc: number) {
     this.speedY += speedInc;
@@ -56,7 +64,11 @@ class Bird {
     this.isDied = false;
   }
 
-  constructor(stage: PIXI.Container, readonly tubeList: Tube[], readonly onCollision: () => void) {
+  constructor(
+    stage: PIXI.Container,
+    readonly tubeList: Tube[],
+    readonly onCollision: () => void
+  ) {
     stage.addChild(this.sprite);
     this.sprite.anchor.set(0.5, 0.5);
     this.updateTexture();
@@ -64,28 +76,31 @@ class Bird {
     this.sprite.scale.y = 0.06;
     this.reset();
 
-    document.addEventListener('keydown', e => {
+    document.addEventListener("keydown", (e) => {
       if (e.keyCode == 32) this.addSpeed(-GRAVITY / 3);
     });
-    stage.on('pointerdown', () => this.addSpeed(-GRAVITY / 3))
+    stage.on("pointerdown", () => this.addSpeed(-GRAVITY / 3));
 
     setInterval(this.updateTexture, 200);
   }
 }
 
+/**
+ *
+ */
 class Tube {
-  private x: number;
-  private y: number;
-  private innerDistance = 80;
-  private tubeWidth = 20;
-
-  private sprite = new PIXI.Graphics();
+  private x: number = 0;
+  private y: number = 0;
+  private innerDistance: number = 80;
+  private tubeWidth: number = 20;
+  private sprite: PIXI.Graphics = new PIXI.Graphics();
 
   reset(x: number = canvasWidthHeight + 20) {
     this.x = x;
-
-    const tubeMinHeight = 60;
-    const randomNum = Math.random() * (canvasWidthHeight - 2 * tubeMinHeight - this.innerDistance);
+    const tubeMinHeight: number = 60;
+    const randomNum: number =
+      Math.random() *
+      (canvasWidthHeight - 2 * tubeMinHeight - this.innerDistance);
     this.y = tubeMinHeight + randomNum;
   }
 
@@ -93,7 +108,13 @@ class Tube {
     if (!(x + width < this.x || this.x + this.tubeWidth < x || this.y < y)) {
       return true;
     }
-    if (!(x + width < this.x || this.x + this.tubeWidth < x || y + height < this.y + this.innerDistance)) {
+    if (
+      !(
+        x + width < this.x ||
+        this.x + this.tubeWidth < x ||
+        y + height < this.y + this.innerDistance
+      )
+    ) {
       return true;
     }
     return false;
@@ -117,47 +138,53 @@ class Tube {
   }
 }
 
-const renderer = PIXI.autoDetectRenderer(canvasWidthHeight, canvasWidthHeight, { backgroundColor: 0xc1c2c4 });
+const renderer = PIXI.autoDetectRenderer(canvasWidthHeight, canvasWidthHeight, {
+  backgroundColor: 0xc1c2c4,
+});
 document.body.appendChild(renderer.view);
-const stage = new PIXI.Container();
+const stage: PIXI.Container = new PIXI.Container();
 stage.interactive = true;
 stage.hitArea = new PIXI.Rectangle(0, 0, 1000, 1000);
 renderer.render(stage);
 
-const tubeList = TUBE_POS_LIST.map(d => new Tube(stage, d));
-PIXI.loader
-  .add(BIRD_FRAME_LIST)
-  .load(setup);
+const tubeList = TUBE_POS_LIST.map((d) => new Tube(stage, d));
 
-let bird;
-const button = document.querySelector('#start');
+PIXI.loader.add(BIRD_FRAME_LIST).load(setup);
+
+let bird: any;
+const button: Element | null = document.querySelector("#start");
+
 function setup() {
   bird = new Bird(stage, tubeList, () => {
     // Called when bird hit tube/ground/upper bound
     gameFailed = true;
-    button.classList.remove('hide');
+    if (button) {
+      button.classList.remove("hide");
+    }
   });
   requestAnimationFrame(draw);
 }
 
-let gameStarted = false;
-let gameFailed = false;
+let gameStarted: boolean = false;
+let gameFailed: boolean = false;
 function draw() {
-  if(gameStarted) {
+  if (gameStarted) {
     bird.updateSprite();
-    if (!gameFailed) tubeList.forEach(d => d.update());
+    if (!gameFailed) tubeList.forEach((d) => d.update());
   }
   renderer.render(stage);
   requestAnimationFrame(draw);
 }
 
-button.addEventListener('click', () => {
-  gameStarted = true;
-  button.innerHTML = 'Retry';
-  if (gameFailed) {
-    gameFailed = false;
-    tubeList.forEach((d, i) => d.reset(TUBE_POS_LIST[i]));
-    bird.reset();
-  }
-  button.classList.add('hide');
-});
+if (button) {
+  button.addEventListener("click", () => {
+    gameStarted = true;
+    button.innerHTML = "Retry";
+    if (gameFailed) {
+      gameFailed = false;
+      tubeList.forEach((d, i) => d.reset(TUBE_POS_LIST[i]));
+      bird.reset();
+    }
+    button.classList.add("hide");
+  });
+}
