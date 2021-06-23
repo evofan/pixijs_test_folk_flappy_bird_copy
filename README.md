@@ -13,6 +13,9 @@ reference
 **node.js - How can I fix compile time errors even using compiler options as target es6 and es2017 in Angular 7? - Stack Overflow**  
 [https://stackoverflow.com/questions/53936918/how-can-i-fix-compile-time-errors-even-using-compiler-options-as-target-es6-and](https://stackoverflow.com/questions/53936918/how-can-i-fix-compile-time-errors-even-using-compiler-options-as-target-es6-and)  
 
+**BrowserSyncの使い方 - Qiita**  
+[https://qiita.com/niusounds/items/a95978f9a1cb328d3021](https://qiita.com/niusounds/items/a95978f9a1cb328d3021)  
+
 Run the original locally  
 `tsc -init`  
 `npm install`  
