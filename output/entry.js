@@ -74,6 +74,9 @@ var Bird = /** @class */ (function () {
     };
     return Bird;
 }());
+/**
+ *
+ */
 var Tube = /** @class */ (function () {
     function Tube(stage, x) {
         this.x = 0;
